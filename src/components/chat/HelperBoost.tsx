@@ -28,10 +28,13 @@ import {
 import { useState } from 'react';
 import { Drawer } from 'vaul';
 
+import { FastfolioTracking } from '@/lib/fastfolio-tracking';
+
 interface HelperBoostProps {
   submitQuery?: (query: string) => void;
   setInput?: (value: string) => void;
   hasReachedLimit?: boolean;
+  onLimitReached?: () => void;
 }
 
 const questions = {
@@ -148,17 +151,27 @@ export default function HelperBoost({
   submitQuery,
   setInput,
   hasReachedLimit = false,
+  onLimitReached,
 }: HelperBoostProps) {
   const [isVisible, setIsVisible] = useState(true);
   const [open, setOpen] = useState(false);
 
   const handleQuestionClick = (questionKey: string) => {
+    if (hasReachedLimit) {
+      onLimitReached?.();
+      return;
+    }
     if (submitQuery) {
       submitQuery(questions[questionKey as keyof typeof questions]);
     }
   };
 
   const handleDrawerQuestionClick = (question: string) => {
+    if (hasReachedLimit) {
+      onLimitReached?.();
+      setOpen(false);
+      return;
+    }
     if (submitQuery) {
       submitQuery(question);
     }
@@ -209,14 +222,19 @@ export default function HelperBoost({
                 {questionConfig.map(({ key, color, icon: Icon }) => (
                   <Button
                     key={key}
-                    onClick={() => !hasReachedLimit && handleQuestionClick(key)}
+                    onClick={() => {
+                      if (hasReachedLimit) {
+                        onLimitReached?.();
+                        return;
+                      }
+                      handleQuestionClick(key);
+                    }}
                     variant="outline"
                     className={`h-auto min-w-[100px] flex-shrink-0 rounded-xl border px-4 py-3 shadow-none backdrop-blur-sm transition-none ${
                       hasReachedLimit 
-                        ? 'cursor-not-allowed border-gray-200 bg-gray-100 opacity-50' 
+                        ? 'cursor-pointer border-gray-200 bg-gray-100 opacity-60' 
                         : 'border-border hover:bg-border/30 cursor-pointer bg-white/80 active:scale-95'
                     }`}
-                    disabled={hasReachedLimit}
                   >
                     <div className="flex items-center gap-3 text-gray-700">
                       <Icon size={18} strokeWidth={2} color={color} />

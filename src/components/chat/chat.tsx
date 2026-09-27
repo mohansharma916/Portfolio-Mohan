@@ -21,7 +21,8 @@ import HelperBoost from './HelperBoost';
 import { FastfolioCTA } from '@/components/fastfolio-cta';
 import { FastfolioPopup } from '@/components/mohan-popup';
 import { PoweredByMohanSharma } from '@/components/powered-by-mohan';
-import { FastfolioTracking } from '@/lib/fastfolio-tracking';
+import { FastfolioTracking, FREE_MESSAGE_LIMIT } from '@/lib/fastfolio-tracking';
+import { getBrowserFingerprint } from '@/lib/fingerprint';
 
 // ClientOnly component for client-side rendering
 //@ts-ignore
@@ -124,12 +125,15 @@ const Chat = () => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get('query');
-  const [autoSubmitted, setAutoSubmitted] = useState(false);
+  const initialQuerySubmittedRef = useRef(false);
   const [loadingSubmit, setLoadingSubmit] = useState(false);
   const [isTalking, setIsTalking] = useState(false);
   const [showFastfolioPopup, setShowFastfolioPopup] = useState(false);
-  const [hasReachedLimit, setHasReachedLimit] = useState(false);
   const [, forceUpdate] = useState({});
+
+  const [storedCount, setStoredCount] = useState<number>(0);
+  const [extraCount, setExtraCount] = useState<number>(0);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   const {
     messages,
@@ -144,6 +148,9 @@ const Chat = () => {
     addToolResult,
     append,
   } = useChat({
+    headers: typeof window !== 'undefined' ? {
+      'x-device-fingerprint': getBrowserFingerprint(),
+    } : undefined,
     onResponse: (response) => {
       if (response) {
         setLoadingSubmit(false);
@@ -152,17 +159,6 @@ const Chat = () => {
           videoRef.current.play().catch((error) => {
             console.error('Failed to play video:', error);
           });
-        }
-        
-        // Don't increment here since we already increment on submit
-        // Just check if we should show popup
-        if (FastfolioTracking.shouldShowPopup()) {
-          setTimeout(() => {
-            setShowFastfolioPopup(true);
-            if (!FastfolioTracking.hasReachedLimit()) {
-              FastfolioTracking.markPopupShown();
-            }
-          }, 2000);
         }
       }
     },
@@ -180,13 +176,41 @@ const Chat = () => {
         videoRef.current.pause();
       }
       console.error('Chat error:', error.message, error.cause);
-      toast.error(`Error: ${error.message}`);
+      if (error.message.includes('limit reached') || error.message.includes('429')) {
+        setShowFastfolioPopup(true);
+      } else {
+        toast.error(`Error: ${error.message}`);
+      }
     },
     onToolCall: (tool) => {
       const toolName = tool.toolCall.toolName;
       console.log('Tool call:', toolName);
     },
   });
+
+  // Save active messages to sessionStorage so reloads preserve the visible conversation
+  useEffect(() => {
+    if (typeof window !== 'undefined' && messages.length > 0) {
+      try {
+        sessionStorage.setItem('fastfolio_chat_history', JSON.stringify(messages));
+      } catch {}
+    }
+  }, [messages]);
+
+  // Restore messages on initial mount if available
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = sessionStorage.getItem('fastfolio_chat_history');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setMessages(parsed);
+          }
+        }
+      } catch {}
+    }
+  }, []);
 
   const { currentAIMessage, latestUserMessage, hasActiveTool } = useMemo(() => {
     const latestAIMessageIndex = messages.findLastIndex(
@@ -230,27 +254,56 @@ const Chat = () => {
       )
   );
 
+  const initialStoredCountRef = useRef<number | null>(null);
+
+  // Sync client storage and server-side IP/fingerprint tracking on mount
+  useEffect(() => {
+    setIsHydrated(true);
+    const localCount = FastfolioTracking.getMessageCount();
+    const localExtra = FastfolioTracking.getExtraMessages();
+    initialStoredCountRef.current = localCount;
+    setStoredCount(localCount);
+    setExtraCount(localExtra);
+
+    // Sync authoritative status from server
+    FastfolioTracking.syncWithServer().then((status) => {
+      setStoredCount(status.count);
+      setExtraCount(status.extra);
+      initialStoredCountRef.current = Math.max(initialStoredCountRef.current || 0, status.count);
+    });
+  }, []);
+
+  const activeUserCount = useMemo(
+    () => messages.filter((m) => m.role === 'user').length,
+    [messages]
+  );
+  const totalAllowedMessages = FREE_MESSAGE_LIMIT + extraCount;
+  const currentTotalUsed = Math.max(
+    storedCount,
+    (initialStoredCountRef.current ?? 0) + (activeUserCount > (initialStoredCountRef.current ?? 0) ? (activeUserCount - (initialStoredCountRef.current ?? 0)) : 0),
+    activeUserCount
+  );
+  const hasReachedLimit = isHydrated && currentTotalUsed >= totalAllowedMessages;
+
+  // Persist updated message count whenever activeUserCount increases
+  useEffect(() => {
+    if (activeUserCount > 0 && isHydrated) {
+      const newTotal = Math.max(storedCount, activeUserCount, initialStoredCountRef.current ?? 0);
+      FastfolioTracking.setMessageCount(newTotal);
+      setStoredCount(newTotal);
+    }
+  }, [activeUserCount, isHydrated]);
+
   //@ts-ignore
   const submitQuery = (query) => {
-    // Check rate limit before submitting
-    if (FastfolioTracking.hasReachedLimit()) {
-      setHasReachedLimit(true);
+    if (!query.trim() || isToolInProgress) return;
+
+    // Check rate limit: user cannot send more than total allowed messages
+    const currentActiveCount = messages.filter((m) => m.role === 'user').length;
+    const checkTotal = Math.max(storedCount, currentActiveCount, currentTotalUsed);
+    if (checkTotal >= totalAllowedMessages) {
       setShowFastfolioPopup(true);
       return;
-    }
-    
-    if (!query.trim() || isToolInProgress) return;
-    
-    // Increment message count
-    FastfolioTracking.incrementMessageCount();
-    
-    // Force re-render to update remaining messages counter
-    forceUpdate({});
-    
-    // Check if limit reached after increment
-    if (FastfolioTracking.hasReachedLimit()) {
-      setHasReachedLimit(true);
-      setShowFastfolioPopup(true);
     }
     
     setLoadingSubmit(true);
@@ -261,6 +314,14 @@ const Chat = () => {
   };
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).resetFastfolio = async () => {
+        await FastfolioTracking.resetForTesting();
+        sessionStorage.clear();
+        window.location.reload();
+      };
+    }
+
     if (videoRef.current) {
       videoRef.current.loop = true;
       videoRef.current.muted = true;
@@ -268,18 +329,15 @@ const Chat = () => {
       videoRef.current.pause();
     }
 
-    // Check rate limit on mount
-    if (FastfolioTracking.hasReachedLimit()) {
-      setHasReachedLimit(true);
-      setShowFastfolioPopup(true);
-    }
-    
-    if (initialQuery && !autoSubmitted) {
-      setAutoSubmitted(true);
+    if (initialQuery && !initialQuerySubmittedRef.current) {
+      initialQuerySubmittedRef.current = true;
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
       setInput('');
       submitQuery(initialQuery);
     }
-  }, [initialQuery, autoSubmitted]);
+  }, [initialQuery]);
 
   useEffect(() => {
     if (videoRef.current) {
@@ -297,9 +355,10 @@ const Chat = () => {
   const onSubmit = (e) => {
     e.preventDefault();
     
-    // Check rate limit
-    if (FastfolioTracking.hasReachedLimit()) {
-      setHasReachedLimit(true);
+    // Check rate limit: user cannot send more than total allowed messages
+    const currentActiveCount = messages.filter((m) => m.role === 'user').length;
+    const checkTotal = Math.max(storedCount, currentActiveCount, currentTotalUsed);
+    if (checkTotal >= totalAllowedMessages) {
       setShowFastfolioPopup(true);
       return;
     }
@@ -319,8 +378,13 @@ const Chat = () => {
   };
 
   const handlePaymentSuccess = () => {
-    setHasReachedLimit(false);
     setShowFastfolioPopup(false);
+    const updatedExtra = FastfolioTracking.getExtraMessages();
+    setExtraCount(updatedExtra);
+    FastfolioTracking.syncWithServer().then((status) => {
+      setStoredCount(status.count);
+      setExtraCount(status.extra);
+    });
     forceUpdate({});
   };
 
@@ -437,9 +501,14 @@ const Chat = () => {
         {/* Fixed Bottom Bar */}
         <div className="sticky bottom-0 bg-white px-2 pt-3 md:px-0 md:pb-4">
           <div className="relative flex flex-col items-center gap-3">
-            <HelperBoost submitQuery={submitQuery} setInput={setInput} hasReachedLimit={hasReachedLimit} />
+            <HelperBoost
+              submitQuery={submitQuery}
+              setInput={setInput}
+              hasReachedLimit={hasReachedLimit}
+              onLimitReached={() => setShowFastfolioPopup(true)}
+            />
             <div
-              className={`w-full ${hasReachedLimit ? 'cursor-pointer' : ''}`}
+              className={`w-full ${hasReachedLimit ? 'cursor-pointer [&_*]:pointer-events-none' : ''}`}
               onClick={hasReachedLimit ? () => setShowFastfolioPopup(true) : undefined}
             >
               <ChatBottombar

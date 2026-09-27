@@ -1,9 +1,11 @@
 'use client';
 
 import { FastfolioCTA } from '@/components/fastfolio-cta';
+import { FastfolioPopup } from '@/components/mohan-popup';
 import FluidCursor from '@/components/FluidCursor';
 import { Button } from '@/components/ui/button';
 import WelcomeModal from '@/components/welcome-modal';
+import { FastfolioTracking } from '@/lib/fastfolio-tracking';
 import { motion } from 'framer-motion';
 import {
   ArrowRight,
@@ -37,11 +39,25 @@ const questionConfig = [
 /* ---------- component ---------- */
 export default function Home() {
   const [input, setInput] = useState('');
+  const [showPopup, setShowPopup] = useState(false);
+  const [hasReachedLimit, setHasReachedLimit] = useState(false);
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const goToChat = (query: string) =>
+  useEffect(() => {
+    setHasReachedLimit(FastfolioTracking.hasReachedLimit());
+    FastfolioTracking.syncWithServer().then((status) => {
+      setHasReachedLimit(status.hasReachedLimit);
+    });
+  }, []);
+
+  const goToChat = (query: string) => {
+    if (FastfolioTracking.hasReachedLimit()) {
+      setShowPopup(true);
+      return;
+    }
     router.push(`/chat?query=${encodeURIComponent(query)}`);
+  };
 
   /* hero animations (unchanged) */
   const topElementVariants = {
@@ -177,6 +193,16 @@ export default function Home() {
           ))}
         </div>
       </motion.div>
+      <FastfolioPopup
+        open={showPopup}
+        onOpenChange={setShowPopup}
+        hasReachedLimit={hasReachedLimit}
+        onPaymentSuccess={() => {
+          setShowPopup(false);
+          setHasReachedLimit(false);
+          router.push('/chat');
+        }}
+      />
       <FluidCursor />
     </div>
   );

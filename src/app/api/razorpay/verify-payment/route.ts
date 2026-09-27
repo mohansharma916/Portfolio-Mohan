@@ -1,20 +1,40 @@
 import crypto from 'crypto';
+import { addServerExtra, getClientIdentifiers } from '@/lib/server-tracking';
 
 export async function POST(req: Request) {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
-      await req.json();
+    const rawBody = await req.json();
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, fingerprint } =
+      rawBody;
 
+    const keys = getClientIdentifiers(req, fingerprint);
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+    // Helper to format success response with cookies
+    const makeSuccessResponse = (addedMessages: number, isDemo = false, paymentId?: string) => {
+      const newExtra = addServerExtra(keys, addedMessages);
+      const res = Response.json({
+        success: true,
+        addedMessages,
+        newExtra,
+        isDemo,
+        paymentId,
+      });
+      res.headers.append(
+        'Set-Cookie',
+        `fastfolio_extra_messages=${newExtra}; Path=/; Max-Age=31536000; SameSite=Lax`
+      );
+      res.headers.append(
+        'Set-Cookie',
+        `fastfolio_rate_limit_reached=false; Path=/; Max-Age=31536000; SameSite=Lax`
+      );
+      return res;
+    };
 
     // Handle demo orders if Razorpay keys are not configured
     if (!keySecret || razorpay_order_id?.startsWith('order_demo_')) {
-      console.log('[RAZORPAY] Verified demo order');
-      return Response.json({
-        success: true,
-        addedMessages: 4,
-        isDemo: true,
-      });
+      console.log('[RAZORPAY] Verified demo order for keys:', keys);
+      return makeSuccessResponse(4, true);
     }
 
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
@@ -41,13 +61,8 @@ export async function POST(req: Request) {
       );
     }
 
-    console.log('[RAZORPAY] Payment verified successfully for payment_id:', razorpay_payment_id);
-
-    return Response.json({
-      success: true,
-      addedMessages: 4,
-      paymentId: razorpay_payment_id,
-    });
+    console.log('[RAZORPAY] Payment verified successfully for payment_id:', razorpay_payment_id, 'keys:', keys);
+    return makeSuccessResponse(4, false, razorpay_payment_id);
   } catch (error) {
     console.error('[RAZORPAY] Payment verification error:', error);
     return Response.json(

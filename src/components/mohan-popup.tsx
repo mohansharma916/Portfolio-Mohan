@@ -11,7 +11,7 @@ import { CheckCircle2, Coffee, Globe, Loader2, MessageSquare, Sparkles } from 'l
 import Image from 'next/image';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { FastfolioTracking, MESSAGES_PER_PURCHASE } from '@/lib/fastfolio-tracking';
+import { FastfolioTracking, FREE_MESSAGE_LIMIT, MESSAGES_PER_PURCHASE } from '@/lib/fastfolio-tracking';
 import { PoweredByMohanSharma } from './powered-by-mohan';
 
 interface FastfolioPopupProps {
@@ -158,7 +158,7 @@ export function FastfolioPopup({
             </div>
 
             <div className="mx-auto mb-2 inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-700 dark:text-amber-300">
-              <span>🛑 4 Free Sawaal Khatam!</span>
+              <span>🛑 {FREE_MESSAGE_LIMIT} Free Sawaal Khatam!</span>
             </div>
 
             <DialogHeader className="space-y-1">
