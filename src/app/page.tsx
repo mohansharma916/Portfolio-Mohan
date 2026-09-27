@@ -1,12 +1,22 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { FastfolioCTA } from '@/components/fastfolio-cta';
-import { FastfolioPopup } from '@/components/mohan-popup';
-import FluidCursor from '@/components/FluidCursor';
 import { Button } from '@/components/ui/button';
-import WelcomeModal from '@/components/welcome-modal';
 import { FastfolioTracking } from '@/lib/fastfolio-tracking';
 import { motion } from 'framer-motion';
+
+const FluidCursor = dynamic(() => import('@/components/FluidCursor'), {
+  ssr: false,
+});
+
+const FastfolioPopup = dynamic(
+  () => import('@/components/mohan-popup').then((mod) => mod.FastfolioPopup),
+  { ssr: false }
+);
+const WelcomeModal = dynamic(() => import('@/components/welcome-modal'), {
+  ssr: false,
+});
 import {
   ArrowRight,
   BriefcaseBusiness,

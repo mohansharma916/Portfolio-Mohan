@@ -1,12 +1,35 @@
 // src/components/chat/tool-renderer.tsx
-import { Contact } from '../contact';
-import Crazy from '../crazy';
-import InternshipCard from '../InternshipCard';
-import { Presentation } from '../presentation';
-import AllProjects from '../projects/AllProjects';
-import Resume from '../resume';
-import Skills from '../skills';
-import Sports from '../sport';
+'use client';
+
+import dynamic from 'next/dynamic';
+
+const Contact = dynamic(() => import('../contact').then((mod) => mod.Contact), {
+  loading: () => <div className="h-28 w-full animate-pulse rounded-lg bg-gray-100 dark:bg-neutral-800" />,
+});
+
+const Crazy = dynamic(() => import('../crazy'), {
+  loading: () => <div className="h-28 w-full animate-pulse rounded-lg bg-gray-100 dark:bg-neutral-800" />,
+});
+
+const InternshipCard = dynamic(() => import('../InternshipCard'), {
+  loading: () => <div className="h-28 w-full animate-pulse rounded-lg bg-gray-100 dark:bg-neutral-800" />,
+});
+
+const Presentation = dynamic(() => import('../presentation').then((mod) => mod.Presentation), {
+  loading: () => <div className="h-28 w-full animate-pulse rounded-lg bg-gray-100 dark:bg-neutral-800" />,
+});
+
+const AllProjects = dynamic(() => import('../projects/AllProjects'), {
+  loading: () => <div className="h-48 w-full animate-pulse rounded-lg bg-gray-100 dark:bg-neutral-800" />,
+});
+
+const Resume = dynamic(() => import('../resume'), {
+  loading: () => <div className="h-48 w-full animate-pulse rounded-lg bg-gray-100 dark:bg-neutral-800" />,
+});
+
+const Skills = dynamic(() => import('../skills'), {
+  loading: () => <div className="h-28 w-full animate-pulse rounded-lg bg-gray-100 dark:bg-neutral-800" />,
+});
 
 interface ToolRendererProps {
   toolInvocations: any[];
@@ -15,31 +38,23 @@ interface ToolRendererProps {
 
 export default function ToolRenderer({
   toolInvocations,
-  messageId,
 }: ToolRendererProps) {
   return (
     <div className="w-full transition-all duration-300">
       {toolInvocations.map((tool) => {
         const { toolCallId, toolName } = tool;
 
-        // Return specialized components based on tool name
         switch (toolName) {
           case 'getProjects':
             return (
-              <div
-                key={toolCallId}
-                className="w-full overflow-hidden rounded-lg"
-              >
+              <div key={toolCallId} className="w-full overflow-hidden rounded-lg">
                 <AllProjects />
               </div>
             );
 
           case 'getPresentation':
             return (
-              <div
-                key={toolCallId}
-                className="w-full overflow-hidden rounded-lg"
-              >
+              <div key={toolCallId} className="w-full overflow-hidden rounded-lg">
                 <Presentation />
               </div>
             );
@@ -79,7 +94,6 @@ export default function ToolRenderer({
               </div>
             );
 
-          // Default renderer for other tools
           default:
             return (
               <div

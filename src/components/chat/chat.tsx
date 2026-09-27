@@ -10,19 +10,28 @@ import { toast } from 'sonner';
 import ChatBottombar from '@/components/chat/chat-bottombar';
 import ChatLanding from '@/components/chat/chat-landing';
 import ChatMessageContent from '@/components/chat/chat-message-content';
-import { SimplifiedChatView } from '@/components/chat/simple-chat-view';
 import {
   ChatBubble,
   ChatBubbleMessage,
 } from '@/components/ui/chat/chat-bubble';
-import WelcomeModal from '@/components/welcome-modal';
 import { Info } from 'lucide-react';
 import HelperBoost from './HelperBoost';
 import { FastfolioCTA } from '@/components/fastfolio-cta';
-import { FastfolioPopup } from '@/components/mohan-popup';
 import { PoweredByMohanSharma } from '@/components/powered-by-mohan';
 import { FastfolioTracking, FREE_MESSAGE_LIMIT } from '@/lib/fastfolio-tracking';
 import { getBrowserFingerprint } from '@/lib/fingerprint';
+
+const FastfolioPopup = dynamic(
+  () => import('@/components/mohan-popup').then((mod) => mod.FastfolioPopup),
+  { ssr: false }
+);
+const WelcomeModal = dynamic(() => import('@/components/welcome-modal'), {
+  ssr: false,
+});
+const SimplifiedChatView = dynamic(
+  () => import('@/components/chat/simple-chat-view').then((mod) => mod.SimplifiedChatView),
+  { ssr: false }
+);
 
 // ClientOnly component for client-side rendering
 //@ts-ignore

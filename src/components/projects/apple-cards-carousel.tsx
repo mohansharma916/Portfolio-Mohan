@@ -2,10 +2,10 @@
 import { useOutsideClick } from '@/hooks/use-outside-click';
 import { cn } from '@/lib/utils';
 import {
-  IconArrowNarrowLeft,
-  IconArrowNarrowRight,
-  IconX,
-} from '@tabler/icons-react';
+  ArrowLeft,
+  ArrowRight,
+  X,
+} from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image, { ImageProps } from 'next/image';
 import React, {
@@ -157,14 +157,14 @@ export const Carousel = ({
             onClick={scrollLeft}
             disabled={!canScrollLeft}
           >
-            <IconArrowNarrowLeft className="h-6 w-6 text-gray-500" />
+            <ArrowLeft className="h-6 w-6 text-gray-500" />
           </button>
           <button
             className="relative z-40 flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 disabled:opacity-50"
             onClick={scrollRight}
             disabled={!canScrollRight}
           >
-            <IconArrowNarrowRight className="h-6 w-6 text-gray-500" />
+            <ArrowRight className="h-6 w-6 text-gray-500" />
           </button>
         </div>
       </div>
@@ -239,7 +239,7 @@ export const Card = ({
                   className="flex h-8 w-8 items-center justify-center rounded-full bg-black/90 shadow-md dark:bg-white/90"
                   onClick={handleClose}
                 >
-                  <IconX className="h-6 w-6 text-neutral-100 dark:text-neutral-900" />
+                  <X className="h-6 w-6 text-neutral-100 dark:text-neutral-900" />
                 </button>
               </div>
 
