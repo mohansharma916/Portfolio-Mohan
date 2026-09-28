@@ -19,10 +19,17 @@ const nextConfig: NextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
   },
+  productionBrowserSourceMaps: false,
   compress: true,
   poweredByHeader: false,
   eslint: {
     ignoreDuringBuilds: true,
+  },
+  webpack: (config, { dev }) => {
+    if (!dev) {
+      config.cache = false;
+    }
+    return config;
   },
 };
 
