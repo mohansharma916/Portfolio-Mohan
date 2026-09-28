@@ -1,7 +1,7 @@
 export async function POST(req: Request) {
   try {
-    const keyId = process.env.RAZORPAY_KEY_ID;
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+    const keySecret = process.env.NEXT_PUBLIC_RAZORPAY_KEY_SECRET;
 
     // Amount: ₹10 (in paise = 1000)
     const amount = 1000;
