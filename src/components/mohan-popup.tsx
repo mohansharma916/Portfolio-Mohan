@@ -172,9 +172,9 @@ export function FastfolioPopup({
 
             {/* Funny description */}
             <p className="mt-3 text-xs leading-relaxed text-muted-foreground sm:text-sm">
-              Dekh bhai, mera AI avatar hawa pe nahi chalta. Server ke bills aate hain aur Bengaluru mein cutting chai bhi ₹10 ki aati hai! ☕🤖
+              Dekh bhai, mera AI avatar hawa pe nahi chalta. Server ke bills aate hain aur Tum Kitne Serious ho ye bhi to check karein  ☕🤖
               <br className="hidden sm:inline" />
-              Dus rupaye de, chaar sawaal aur pooch le. Deal pakki?
+              Dus rupaye de, chaar sawaal aur pooch lo. Deal pakki?
             </p>
 
             {/* Price badge */}
